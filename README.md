@@ -84,6 +84,7 @@ python -m input_recorder -d <data_dir> [options]
 | `--session-id` | —   | No       | generated UUID | Session id recorded in `metadata.session_id` |
 | `--task-type`  | —   | No       |   —          | Collection protocol: `free-text`, `fixed-text`, `free-mouse`, … |
 | `--prompt-id`  | —   | No       |   —          | Identifier of the prompt/stimulus, if any |
+| `--backend`    | —   | No       | `auto`       | Capture backend: `auto`, `cgeventtap`, or `pynput` |
 
 **Examples:**
 ```bash
@@ -180,15 +181,16 @@ window context so demo data is obvious).
     "signal_type": "keyboard",   // or "mouse"
     "timestamp": 1780383709.18,  // epoch seconds at flush time
     "timing": {                  // timing provenance (Killourhy & Maxion 2009)
-      "backend": "pynput", "source": "monotonic_callback",
+      "backend": "cgeventtap",   // or "pynput" / "demo"
+      "source": "cgevent_timestamp", // OS event time; "monotonic_callback" for pynput
       "unit": "s", "clock_resolution_ms": 0.00004
     },
     "version": "2"
   },
   "payload": [
-    // keyboard: [action, "SimKey:<label>;<vk_code>", elapsed_seconds, window_context]
-    ["press",   "SimKey:a;0",   0.0,   "Terminal app -:- bash"],
-    ["release", "SimKey:vk49;49", 0.687, "TextEdit app -:- README md"],
+    // keyboard: [action, "SimKey:<label>;<vk>", elapsed_seconds, window_context, {"autorepeat": bool|null}]
+    ["press",   "SimKey:a;0",   0.0,   "Terminal app -:- bash", {"autorepeat": false}],
+    ["release", "SimKey:vk49;49", 0.687, "TextEdit app -:- README md", {"autorepeat": false}],
 
     // mouse — shape varies by action:
     ["move",    [712.6, -160.4],                  0.006, "..."],
@@ -203,7 +205,19 @@ window context so demo data is obvious).
 A single alphanumeric character (`0`-`9`, `a`-`z`) → its literal lowercase form;
 every other key (space, punctuation, Return, modifiers, arrows) → `vk<code>`
 using the **macOS virtual key code**. The label *shape* matches the Windows tool
-so downstream parsing is unchanged.
+so downstream parsing is unchanged. Each keyboard entry ends with a flags object
+`{"autorepeat": bool|null}` — `true`/`false` from the CGEventTap backend,
+`null` (unknown) from the pynput backend.
+
+### Capture backend (`--backend`)
+
+| Backend | Timing source | Notes |
+|---|---|---|
+| `cgeventtap` (default via `auto`) | **OS event timestamp** (`CGEventGetTimestamp`, ns) | CA-grade: jitter-free dwell/latency; real `autorepeat` flag. Recommended. |
+| `pynput` | callback time (`time.monotonic()`) | Portable fallback; `autorepeat` unknown. |
+
+`--backend auto` (default) uses CGEventTap and falls back to pynput if the tap
+can't be created. Both need the **Input Monitoring** permission.
 
 ### `monitor_info`
 
@@ -224,9 +238,10 @@ These are deliberate macOS adaptations (the project was scoped as
 - **Window context uses `app` instead of `exe`.** Format is
   `"<app name> app -:- <sanitized title>"` (Windows used `"<process> exe -:- …"`).
   App name via `NSWorkspace`; title via Quartz (needs Screen Recording, else blank).
-- **Timing source.** Events are timestamped with `time.monotonic()` at callback
-  time (relative to recording start), rather than the OS hook's own event time.
-  This can include a small amount of scheduling jitter the Win32 version avoids.
+- **Timing source.** The default `cgeventtap` backend timestamps each event with
+  the OS event time (`CGEventGetTimestamp`), matching the Win32 tool's use of the
+  hook's own event time — jitter-free. The `pynput` fallback timestamps at the
+  callback (`time.monotonic()`), which admits minor scheduling jitter.
 - **Mouse coordinates** come from pynput (Quartz global coordinates) and are
   emitted as floats to match the reference payload shape.
 - **No admin/root required**, but the macOS **Input Monitoring** (and often
@@ -241,8 +256,9 @@ input_recorder/
 ├── cli_options.py       # argument parsing            (≈ cli_options.cpp)
 ├── entity_info.py       # entity block                (≈ entity_info.cpp)
 ├── window_context.py    # foreground app/window       (≈ window_context.cpp)
-├── keyboard_listener.py # keyboard capture            (≈ keyboard_hook.cpp)
-├── mouse_listener.py    # mouse capture               (≈ mouse_hook.cpp)
+├── cgeventtap.py        # CGEventTap backend: OS event-time + auto-repeat
+├── keyboard_listener.py # pynput keyboard capture     (≈ keyboard_hook.cpp)
+├── mouse_listener.py    # pynput mouse capture        (≈ mouse_hook.cpp)
 ├── displays.py          # monitor enumeration         (≈ EnumerateMonitors)
 ├── device_info.py       # device/screen/layout metadata (macOS-specific)
 ├── permissions.py       # Input Monitoring pre-flight (macOS-specific)

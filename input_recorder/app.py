@@ -25,15 +25,44 @@ from .reporting import make_reporter
 _POLL_INTERVAL_SECONDS = 0.2
 
 
-def _build_timing(demo: bool) -> dict:
-    # Commit 1 still times events at the pynput callback; the CGEventTap backend
-    # (commit 2) will change source to the OS event timestamp. Labelled honestly.
+def _timing_for(backend: str) -> dict:
+    # cgeventtap reads the OS event timestamp; pynput/demo time at the callback.
+    source = ("cgevent_timestamp" if backend == "cgeventtap"
+              else "monotonic_callback")
     return {
-        "backend": "demo" if demo else "pynput",
-        "source": "monotonic_callback",
+        "backend": backend,
+        "source": source,
         "unit": "s",
         "clock_resolution_ms": round(clock_resolution_ms(), 6),
     }
+
+
+def _make_listener(name: str, signal_type: str, start: float, callback):
+    if name == "cgeventtap":
+        from .cgeventtap import CGEventTapListener
+        return CGEventTapListener(signal_type, start, callback)
+    if signal_type == "keyboard":
+        return KeyboardListener(start, callback)
+    return MouseListener(start, callback)
+
+
+def _start_capture(preference: str, signal_type: str, start: float, callback):
+    """Start the preferred backend, falling back per --backend. Returns
+    (listener, backend_name). Raises if no backend could start."""
+    order = {
+        "auto": ["cgeventtap", "pynput"],
+        "cgeventtap": ["cgeventtap"],
+        "pynput": ["pynput"],
+    }[preference]
+    last_exc: Exception | None = None
+    for name in order:
+        try:
+            listener = _make_listener(name, signal_type, start, callback)
+            listener.start()
+            return listener, name
+        except Exception as exc:  # tap-create failure, missing perms, etc.
+            last_exc = exc
+    raise last_exc or RuntimeError("no capture backend available")
 
 
 def main(argv: list[str]) -> int:
@@ -61,48 +90,51 @@ def main(argv: list[str]) -> int:
         "prompt_id": options.prompt_id or None,
     }
 
+    # Populated once the capture backend is known (writer reads it at flush).
+    timing: dict = {}
+
     writer = RecordingWriter(
         options.data_dir, options.signal_type, entity,
         options.interval_seconds, monitor_info,
         session_id=session_id,
         session_start=session_start,
-        timing=_build_timing(options.demo),
+        timing=timing,
         device=build_device_info(),
         collection=collection)
 
     reporter = make_reporter(force_plain=options.plain, mask_keys=options.mask_keys)
 
     # Tap the capture callback so each event lands in both the JSON buffer and
-    # the live feed. Called from the pynput listener thread.
+    # the live feed. Called from the capture backend's thread.
     def on_entry(entry: list) -> None:
         writer.add_payload_entry(entry)
         reporter.event(entry)
 
     start = time.monotonic()
-    if options.demo:
-        listener = DemoSource(options.signal_type, start, on_entry)
-    elif options.signal_type == "keyboard":
-        listener = KeyboardListener(start, on_entry)
-    else:
-        listener = MouseListener(start, on_entry)
-
     runtime = options.runtime_seconds
     interval = options.interval_seconds
 
     with reporter:
         reporter.begin(options.signal_type, writer.output_subdir,
                        runtime, interval, username_prefix)
-        if options.demo:
-            reporter.note("demo mode: events are synthetic (no real capture)")
 
         try:
-            listener.start()
+            if options.demo:
+                listener = DemoSource(options.signal_type, start, on_entry)
+                listener.start()
+                backend = "demo"
+            else:
+                listener, backend = _start_capture(
+                    options.backend, options.signal_type, start, on_entry)
         except Exception as exc:
-            reporter.note(f"ERROR: failed to start {options.signal_type} "
-                          f"listener ({exc})")
+            reporter.note(f"ERROR: failed to start capture ({exc})")
             reporter.note("Grant Input Monitoring to your terminal in System "
                           "Settings > Privacy & Security, then relaunch it.")
             return 1
+
+        timing.update(_timing_for(backend))
+        reporter.note(f"capture backend: {backend} "
+                      f"(timing source: {timing['source']})")
 
         last_flush = 0.0
         stopped_early = False

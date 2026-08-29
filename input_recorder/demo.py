@@ -47,9 +47,11 @@ class DemoSource:
             label = f"SimKey:{char.lower()};{ord(char)}"
         else:
             label = "SimKey:vk36;36"
-        self._callback(["press", label, self._elapsed(), _DEMO_WINDOW])
+        self._callback(["press", label, self._elapsed(), _DEMO_WINDOW,
+                        {"autorepeat": False}])
         time.sleep(random.uniform(0.02, 0.06))
-        self._callback(["release", label, self._elapsed(), _DEMO_WINDOW])
+        self._callback(["release", label, self._elapsed(), _DEMO_WINDOW,
+                        {"autorepeat": False}])
 
     def _emit_mouse(self, x: float, y: float) -> None:
         roll = random.random()

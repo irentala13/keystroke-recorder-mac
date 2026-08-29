@@ -65,6 +65,8 @@ class KeyboardListener:
             build_key_label(key),
             elapsed,
             get_frontmost_window_context(),
+            # pynput can't distinguish OS auto-repeat -> unknown.
+            {"autorepeat": None},
         ]
         self._callback(entry)
 

@@ -23,6 +23,7 @@ class CliOptions:
     session_id: str = ""        # empty -> generated UUID
     task_type: str = ""         # e.g. free-text | fixed-text | free-mouse
     prompt_id: str = ""         # id of the prompt/stimulus, if any
+    backend: str = "auto"       # auto | cgeventtap | pynput
 
 
 def _positive_int(value: str) -> int:
@@ -100,6 +101,12 @@ def parse_cli_options(argv: list[str]) -> CliOptions:
         "--prompt-id", default="", dest="prompt_id",
         help="Identifier of the prompt/stimulus shown to the subject, if any",
     )
+    parser.add_argument(
+        "--backend", choices=("auto", "cgeventtap", "pynput"), default="auto",
+        dest="backend",
+        help="Capture backend: cgeventtap (OS event-time, best for CA), pynput, "
+             "or auto (cgeventtap then pynput fallback). Default: auto",
+    )
 
     ns = parser.parse_args(argv[1:])
     return CliOptions(
@@ -118,4 +125,5 @@ def parse_cli_options(argv: list[str]) -> CliOptions:
         session_id=ns.session_id,
         task_type=ns.task_type,
         prompt_id=ns.prompt_id,
+        backend=ns.backend,
     )

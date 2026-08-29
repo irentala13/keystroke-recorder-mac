@@ -25,6 +25,7 @@ recordings are suitable for downstream feature extraction without re-recording.
 | Recorded field | Enables (downstream feature) | Reference |
 |---|---|---|
 | `payload` `press`/`release` per key + `elapsed` | Key hold time (dwell); DD/UD/DU/UU latencies; n-graph timing | Killourhy-Maxion |
+| `payload` keyboard trailing `{"autorepeat": …}` | Filter OS held-key repeats that corrupt dwell/latency | Killourhy-Maxion |
 | `payload` mouse `move` `[x,y]` + `elapsed` | Velocity, acceleration, jerk, curvature, path efficiency | Ahmed-Traore |
 | `payload` mouse `click`/`release` + button | Click dwell, double-click interval, drag duration | Ahmed-Traore |
 | `metadata.timing` (`source`, `unit`, `clock_resolution_ms`) | Trust/normalize timing across recordings | Killourhy-Maxion |
@@ -41,14 +42,21 @@ recordings are suitable for downstream feature extraction without re-recording.
 device/screen/layout, collection protocol, mouse sampling rate, out-of-order
 counter. Schema `version` is `2`.
 
-**Pending (capture layer — next):** the biggest literature-critical gap is
-**event-sourced, high-resolution timestamps**. pynput times events at the
-Python callback (`timing.source = "monotonic_callback"`), which admits scheduler
-jitter at the millisecond scale that keystroke dwell/latency features are most
-sensitive to. The planned `CGEventTap` backend will read the OS event timestamp
-(`CGEventGetTimestamp`) and the auto-repeat flag (`kCGKeyboardEventAutorepeat`),
-flipping `timing.source` to `"cgevent_timestamp"` and adding an
-`autorepeat`-filtered capture path.
+**Implemented (capture layer):** the default **`CGEventTap`** backend reads the
+OS event timestamp (`CGEventGetTimestamp`, nanoseconds since boot — the same
+timebase as `time.monotonic()`, so it needs no anchoring) instead of timing at
+the Python callback. This removes the scheduler jitter that keystroke
+dwell/latency features are most sensitive to (Killourhy & Maxion, DSN 2009), and
+sets `timing.source = "cgevent_timestamp"`. It also surfaces the auto-repeat flag
+(`kCGKeyboardEventAutorepeat`) as a trailing `{"autorepeat": bool}` on each
+keyboard entry — kept, not dropped, so downstream can filter held-key repeats
+that would otherwise corrupt dwell/latency. The unit (ns vs legacy mach-ticks) is
+auto-detected on the first event, so timing stays correct on older/Intel Macs.
+`--backend pynput` remains as a portable fallback (`autorepeat: null`).
+
+**Remaining nice-to-haves:** explicit drag/"silence" mouse action typing
+(currently derivable from button state + timestamps); dropped-event accounting
+(only out-of-order is measured today).
 
 ## Collection protocol tips
 

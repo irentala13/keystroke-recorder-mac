@@ -34,9 +34,11 @@ class RecordingWriter:
         self._monitor_info = monitor_info or []
         self._session_id = session_id
         self._session_start = session_start
-        self._timing = timing or {}
-        self._device = device or {}
-        self._collection = collection or {}
+        # Keep the caller's dict identity — app.py fills `timing` in after the
+        # capture backend is known (an empty dict is falsy, so don't use `or`).
+        self._timing = timing if timing is not None else {}
+        self._device = device if device is not None else {}
+        self._collection = collection if collection is not None else {}
         self._payload: list = []
         self._lock = threading.Lock()
         self._sequence = 0
