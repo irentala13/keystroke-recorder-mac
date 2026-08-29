@@ -19,6 +19,7 @@ class CliOptions:
     skip_permission_check: bool = False
     plain: bool = False         # force the plain reporter (no rich TUI)
     mask_keys: bool = False     # hide typed characters in the live feed
+    demo: bool = False          # feed synthetic events (no OS capture)
 
 
 def _positive_int(value: str) -> int:
@@ -79,6 +80,11 @@ def parse_cli_options(argv: list[str]) -> CliOptions:
         "--mask-keys", action="store_true", dest="mask_keys",
         help="Hide typed characters in the live event feed (shows SimKey:•;<vk>)",
     )
+    parser.add_argument(
+        "--demo", action="store_true", dest="demo",
+        help="Feed synthetic events instead of capturing real input (previews "
+             "the UI; no permission needed)",
+    )
 
     ns = parser.parse_args(argv[1:])
     return CliOptions(
@@ -93,4 +99,5 @@ def parse_cli_options(argv: list[str]) -> CliOptions:
         skip_permission_check=ns.skip_permission_check,
         plain=ns.plain,
         mask_keys=ns.mask_keys,
+        demo=ns.demo,
     )

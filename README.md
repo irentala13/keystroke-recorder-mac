@@ -129,6 +129,22 @@ blocking the event tap.
   worth considering for a keystroke tool. It affects the **display only**; the
   JSON files always contain the real labels.
 
+### Previewing the UI (`--demo`)
+
+Want to see the live TUI without granting permissions or typing? `--demo` feeds
+**synthetic** events through the exact same pipeline (buffering, flushing, JSON
+output, and the live display animate normally):
+
+```bash
+python -m input_recorder -d ~/Data -r 30 -i 5 --demo            # keyboard TUI
+python -m input_recorder -d ~/Data -r 30 -i 5 -t mouse --demo   # mouse TUI
+```
+
+No Input Monitoring permission is needed in demo mode. It also doubles as a
+non-interactive smoke test — under `--plain` / a pipe it still exercises the
+whole path and writes real JSON files (with a `DemoApp app -:- synthetic input`
+window context so demo data is obvious).
+
 ---
 
 ## JSON schema
@@ -212,5 +228,6 @@ input_recorder/
 ├── permissions.py       # Input Monitoring pre-flight (macOS-specific)
 ├── reporting.py         # rich TUI + plain reporter    (macOS-specific)
 ├── console.py           # low-level carriage-return line writer
+├── demo.py              # synthetic event source for --demo
 └── json_writer.py       # buffering + JSON output     (≈ json_writer.cpp)
 ```

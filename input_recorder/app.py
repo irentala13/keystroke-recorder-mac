@@ -11,6 +11,7 @@ import sys
 import time
 
 from .cli_options import parse_cli_options
+from .demo import DemoSource
 from .displays import enumerate_monitors
 from .entity_info import build_entity_info
 from .json_writer import RecordingWriter
@@ -26,8 +27,10 @@ def main(argv: list[str]) -> int:
     options = parse_cli_options(argv)
 
     # Fail fast with clear instructions if macOS won't let us capture input,
-    # rather than silently recording nothing.
-    if not options.skip_permission_check and not ensure_input_monitoring():
+    # rather than silently recording nothing. Demo mode fabricates its own
+    # events, so it needs no capture permission.
+    if (not options.demo and not options.skip_permission_check
+            and not ensure_input_monitoring()):
         return 1
 
     entity = build_entity_info(
@@ -51,7 +54,9 @@ def main(argv: list[str]) -> int:
         reporter.event(entry)
 
     start = time.monotonic()
-    if options.signal_type == "keyboard":
+    if options.demo:
+        listener = DemoSource(options.signal_type, start, on_entry)
+    elif options.signal_type == "keyboard":
         listener = KeyboardListener(start, on_entry)
     else:
         listener = MouseListener(start, on_entry)
@@ -62,6 +67,8 @@ def main(argv: list[str]) -> int:
     with reporter:
         reporter.begin(options.signal_type, writer.output_subdir,
                        runtime, interval, username_prefix)
+        if options.demo:
+            reporter.note("demo mode: events are synthetic (no real capture)")
 
         try:
             listener.start()
