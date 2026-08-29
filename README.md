@@ -78,6 +78,8 @@ python -m input_recorder -d <data_dir> [options]
 | `--tenant`     | —   | No       | `FAKE_TENANT`     | Placeholder `entity.tenant`                     |
 | `--tuid`       | —   | No       | `FAKE_TUID`       | Placeholder `entity.tuid`                       |
 | `--skip-permission-check` | — | No |   —          | Skip the Input Monitoring pre-flight and start recording immediately |
+| `--plain`      | —   | No       |   —          | Use the plain text reporter instead of the rich live TUI |
+| `--mask-keys`  | —   | No       |   —          | Hide typed characters in the live event feed (`SimKey:•;<vk>`) |
 
 **Examples:**
 ```bash
@@ -96,22 +98,36 @@ If you `pip install .`, the console script `input_recorder` is also available.
 
 ### Console output
 
-While recording, a **live status line** updates in place with elapsed/total
-time, cumulative events, files written, and the countdown to the next flush:
+On an interactive terminal you get a **rich live TUI** — a header, a time
+progress bar, running stats, a recent-flush strip, and a scrolling event feed:
 
 ```
-● Recording keyboard  →  /Users/you/Data/KBD_JSON
-  duration 120s · flush every 30s · user 'you'
-  Press Ctrl+C to stop early.
-  ✓ wrote you1.json (210 actions)
-  ● 00:47 / 02:00  │ events 331  │ files 1  │ next flush 13s  │ Ctrl+C to stop
+╭───────────────────────────── input_recorder ─────────────────────────────╮
+│  ● keyboard  →  /Users/you/Data/KBD_JSON   user 'you'                     │
+│  ━━━━━━━━━━━━━━━╸━━━━━━━━━━━━━━━━━━━━━━━━ 00:47 / 02:00                    │
+│  events 336   files 1   next flush 13s   ·  Ctrl+C to stop                │
+│  ╭─ recent ─────────────────────────────────────────────────────────────╮ │
+│  │ ✓ wrote you1.json (210 actions)                                       │ │
+│  ╰───────────────────────────────────────────────────────────────────────╯ │
+│  ╭─ event feed (last 12) ───────────────────────────────────────────────╮ │
+│  │    time  action    key / pos            window                        │ │
+│  │    0.42  press     SimKey:i;34          Terminal app -:- bash         │ │
+│  │    0.55  press     SimKey:vk49;49       Notes app -:- Untitled        │ │
+│  ╰───────────────────────────────────────────────────────────────────────╯ │
+╰───────────────────────────────────────────────────────────────────────────╯
 ```
 
-Each flush prints a persistent `✓ wrote …` line, and the run ends with a summary
-(`✔ Recording complete — N events, M files …`). If **zero** events were captured
-it prints a warning — the tell-tale sign macOS is blocking the event tap. When
-stdout isn't a TTY (pipes/CI), the live line is suppressed and only the log lines
-and summary are printed.
+The run ends with a summary (`✔ Recording complete — N events, M files …`),
+and a warning if **zero** events were captured — the tell-tale sign macOS is
+blocking the event tap.
+
+- **`--plain`** falls back to a dependency-free carriage-return status line plus
+  `✓ wrote …` log lines. This is also used **automatically** when stdout isn't a
+  TTY (pipes / CI / redirected logs), so output stays clean there.
+- **`--mask-keys`** replaces the typed character in the feed with `•`
+  (`SimKey:•;<vk>`) so the on-screen feed doesn't reveal exactly what was typed —
+  worth considering for a keystroke tool. It affects the **display only**; the
+  JSON files always contain the real labels.
 
 ---
 
@@ -194,5 +210,7 @@ input_recorder/
 ├── mouse_listener.py    # mouse capture               (≈ mouse_hook.cpp)
 ├── displays.py          # monitor enumeration         (≈ EnumerateMonitors)
 ├── permissions.py       # Input Monitoring pre-flight (macOS-specific)
+├── reporting.py         # rich TUI + plain reporter    (macOS-specific)
+├── console.py           # low-level carriage-return line writer
 └── json_writer.py       # buffering + JSON output     (≈ json_writer.cpp)
 ```

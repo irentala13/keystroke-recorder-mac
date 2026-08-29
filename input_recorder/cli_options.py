@@ -17,6 +17,8 @@ class CliOptions:
     tenant: str = ""            # empty -> FAKE_TENANT
     tuid: str = ""              # empty -> FAKE_TUID
     skip_permission_check: bool = False
+    plain: bool = False         # force the plain reporter (no rich TUI)
+    mask_keys: bool = False     # hide typed characters in the live feed
 
 
 def _positive_int(value: str) -> int:
@@ -69,6 +71,14 @@ def parse_cli_options(argv: list[str]) -> CliOptions:
         "--skip-permission-check", action="store_true", dest="skip_permission_check",
         help="Skip the macOS Input Monitoring pre-flight check and start recording immediately",
     )
+    parser.add_argument(
+        "--plain", action="store_true", dest="plain",
+        help="Use the plain text reporter instead of the rich live TUI",
+    )
+    parser.add_argument(
+        "--mask-keys", action="store_true", dest="mask_keys",
+        help="Hide typed characters in the live event feed (shows SimKey:•;<vk>)",
+    )
 
     ns = parser.parse_args(argv[1:])
     return CliOptions(
@@ -81,4 +91,6 @@ def parse_cli_options(argv: list[str]) -> CliOptions:
         tenant=ns.tenant,
         tuid=ns.tuid,
         skip_permission_check=ns.skip_permission_check,
+        plain=ns.plain,
+        mask_keys=ns.mask_keys,
     )
