@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "input-recorder-mac"
+version = "1.0.0"
+description = "macOS keyboard/mouse recorder producing behavioral-biometrics test JSON (macOS counterpart to keystroke-recorder-win)"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "pynput>=1.7.6",
+    "pyobjc-framework-Cocoa>=9.0",
+    "pyobjc-framework-Quartz>=9.0",
+]
+
+[project.scripts]
+input_recorder = "input_recorder.app:run"
+
+[tool.setuptools]
+packages = ["input_recorder"]
