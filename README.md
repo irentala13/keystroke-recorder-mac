@@ -94,6 +94,25 @@ flushed before exit.
 
 If you `pip install .`, the console script `input_recorder` is also available.
 
+### Console output
+
+While recording, a **live status line** updates in place with elapsed/total
+time, cumulative events, files written, and the countdown to the next flush:
+
+```
+● Recording keyboard  →  /Users/you/Data/KBD_JSON
+  duration 120s · flush every 30s · user 'you'
+  Press Ctrl+C to stop early.
+  ✓ wrote you1.json (210 actions)
+  ● 00:47 / 02:00  │ events 331  │ files 1  │ next flush 13s  │ Ctrl+C to stop
+```
+
+Each flush prints a persistent `✓ wrote …` line, and the run ends with a summary
+(`✔ Recording complete — N events, M files …`). If **zero** events were captured
+it prints a warning — the tell-tale sign macOS is blocking the event tap. When
+stdout isn't a TTY (pipes/CI), the live line is suppressed and only the log lines
+and summary are printed.
+
 ---
 
 ## JSON schema
