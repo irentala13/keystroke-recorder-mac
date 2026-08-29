@@ -16,12 +16,18 @@ from .entity_info import build_entity_info
 from .json_writer import RecordingWriter
 from .keyboard_listener import KeyboardListener
 from .mouse_listener import MouseListener
+from .permissions import ensure_input_monitoring
 
 _POLL_INTERVAL_SECONDS = 0.2
 
 
 def main(argv: list[str]) -> int:
     options = parse_cli_options(argv)
+
+    # Fail fast with clear instructions if macOS won't let us capture input,
+    # rather than silently recording nothing.
+    if not options.skip_permission_check and not ensure_input_monitoring():
+        return 1
 
     entity = build_entity_info(
         options.username, options.machine_id, options.tenant, options.tuid)

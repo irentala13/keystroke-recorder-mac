@@ -16,6 +16,7 @@ class CliOptions:
     machine_id: str = ""        # empty -> FAKE_MACHINE_ID
     tenant: str = ""            # empty -> FAKE_TENANT
     tuid: str = ""              # empty -> FAKE_TUID
+    skip_permission_check: bool = False
 
 
 def _positive_int(value: str) -> int:
@@ -64,6 +65,10 @@ def parse_cli_options(argv: list[str]) -> CliOptions:
         "--tuid", default="", dest="tuid",
         help="Placeholder entity.tuid (default: FAKE_TUID)",
     )
+    parser.add_argument(
+        "--skip-permission-check", action="store_true", dest="skip_permission_check",
+        help="Skip the macOS Input Monitoring pre-flight check and start recording immediately",
+    )
 
     ns = parser.parse_args(argv[1:])
     return CliOptions(
@@ -75,4 +80,5 @@ def parse_cli_options(argv: list[str]) -> CliOptions:
         machine_id=ns.machine_id,
         tenant=ns.tenant,
         tuid=ns.tuid,
+        skip_permission_check=ns.skip_permission_check,
     )

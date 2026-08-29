@@ -31,10 +31,25 @@ app that launches Python (e.g. **Terminal**, **iTerm**, or your IDE) under
 | Permission          | Needed for                                            |
 |---------------------|-------------------------------------------------------|
 | **Input Monitoring**| Capturing keystrokes / mouse events (required)        |
-| **Accessibility**   | Some macOS versions also require this for the event tap |
 | **Screen Recording**| *Optional* — only to capture the foreground **window title**. Without it, the app name is still recorded; the title is left blank. |
 
-After granting, fully quit and reopen the terminal/IDE.
+After granting, **fully quit and reopen** the terminal/IDE — the permission only
+takes effect on relaunch.
+
+#### Automatic pre-flight check
+
+You don't have to remember this. Every run first checks the Input Monitoring
+permission (via `CGPreflightListenEventAccess`). If it isn't granted, the tool:
+
+1. prints step-by-step instructions,
+2. triggers the macOS permission prompt (registering the app in the list), and
+3. opens **System Settings** directly on the Input Monitoring pane,
+
+then exits without recording — so you never silently capture an empty file.
+Grant the permission, relaunch your terminal, and run the command again.
+
+Pass `--skip-permission-check` to bypass this and start immediately (useful in
+CI or once you know the permission is granted).
 
 ## Install
 
@@ -62,6 +77,7 @@ python -m input_recorder -d <data_dir> [options]
 | `--machine-id` | —   | No       | `FAKE_MACHINE_ID` | Placeholder `entity.machine_id`                 |
 | `--tenant`     | —   | No       | `FAKE_TENANT`     | Placeholder `entity.tenant`                     |
 | `--tuid`       | —   | No       | `FAKE_TUID`       | Placeholder `entity.tuid`                       |
+| `--skip-permission-check` | — | No |   —          | Skip the Input Monitoring pre-flight and start recording immediately |
 
 **Examples:**
 ```bash
@@ -158,5 +174,6 @@ input_recorder/
 ├── keyboard_listener.py # keyboard capture            (≈ keyboard_hook.cpp)
 ├── mouse_listener.py    # mouse capture               (≈ mouse_hook.cpp)
 ├── displays.py          # monitor enumeration         (≈ EnumerateMonitors)
+├── permissions.py       # Input Monitoring pre-flight (macOS-specific)
 └── json_writer.py       # buffering + JSON output     (≈ json_writer.cpp)
 ```
