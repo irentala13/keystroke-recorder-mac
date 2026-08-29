@@ -20,6 +20,9 @@ class CliOptions:
     plain: bool = False         # force the plain reporter (no rich TUI)
     mask_keys: bool = False     # hide typed characters in the live feed
     demo: bool = False          # feed synthetic events (no OS capture)
+    session_id: str = ""        # empty -> generated UUID
+    task_type: str = ""         # e.g. free-text | fixed-text | free-mouse
+    prompt_id: str = ""         # id of the prompt/stimulus, if any
 
 
 def _positive_int(value: str) -> int:
@@ -85,6 +88,18 @@ def parse_cli_options(argv: list[str]) -> CliOptions:
         help="Feed synthetic events instead of capturing real input (previews "
              "the UI; no permission needed)",
     )
+    parser.add_argument(
+        "--session-id", default="", dest="session_id",
+        help="Recording session id recorded in metadata (default: generated UUID)",
+    )
+    parser.add_argument(
+        "--task-type", default="", dest="task_type",
+        help="Collection protocol / task (e.g. free-text, fixed-text, free-mouse)",
+    )
+    parser.add_argument(
+        "--prompt-id", default="", dest="prompt_id",
+        help="Identifier of the prompt/stimulus shown to the subject, if any",
+    )
 
     ns = parser.parse_args(argv[1:])
     return CliOptions(
@@ -100,4 +115,7 @@ def parse_cli_options(argv: list[str]) -> CliOptions:
         plain=ns.plain,
         mask_keys=ns.mask_keys,
         demo=ns.demo,
+        session_id=ns.session_id,
+        task_type=ns.task_type,
+        prompt_id=ns.prompt_id,
     )

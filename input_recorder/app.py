@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import sys
 import time
+import uuid
 
 from .cli_options import parse_cli_options
 from .demo import DemoSource
+from .device_info import build_device_info, clock_resolution_ms
 from .displays import enumerate_monitors
 from .entity_info import build_entity_info
 from .json_writer import RecordingWriter
@@ -21,6 +23,17 @@ from .permissions import ensure_input_monitoring
 from .reporting import make_reporter
 
 _POLL_INTERVAL_SECONDS = 0.2
+
+
+def _build_timing(demo: bool) -> dict:
+    # Commit 1 still times events at the pynput callback; the CGEventTap backend
+    # (commit 2) will change source to the OS event timestamp. Labelled honestly.
+    return {
+        "backend": "demo" if demo else "pynput",
+        "source": "monotonic_callback",
+        "unit": "s",
+        "clock_resolution_ms": round(clock_resolution_ms(), 6),
+    }
 
 
 def main(argv: list[str]) -> int:
@@ -41,9 +54,21 @@ def main(argv: list[str]) -> int:
     if options.signal_type == "mouse":
         monitor_info = enumerate_monitors()
 
+    session_id = options.session_id or str(uuid.uuid4())
+    session_start = time.time()
+    collection = {
+        "task_type": options.task_type or None,
+        "prompt_id": options.prompt_id or None,
+    }
+
     writer = RecordingWriter(
         options.data_dir, options.signal_type, entity,
-        options.interval_seconds, monitor_info)
+        options.interval_seconds, monitor_info,
+        session_id=session_id,
+        session_start=session_start,
+        timing=_build_timing(options.demo),
+        device=build_device_info(),
+        collection=collection)
 
     reporter = make_reporter(force_plain=options.plain, mask_keys=options.mask_keys)
 

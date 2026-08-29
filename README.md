@@ -80,6 +80,10 @@ python -m input_recorder -d <data_dir> [options]
 | `--skip-permission-check` | — | No |   —          | Skip the Input Monitoring pre-flight and start recording immediately |
 | `--plain`      | —   | No       |   —          | Use the plain text reporter instead of the rich live TUI |
 | `--mask-keys`  | —   | No       |   —          | Hide typed characters in the live event feed (`SimKey:•;<vk>`) |
+| `--demo`       | —   | No       |   —          | Feed synthetic events (preview UI; no permission needed) |
+| `--session-id` | —   | No       | generated UUID | Session id recorded in `metadata.session_id` |
+| `--task-type`  | —   | No       |   —          | Collection protocol: `free-text`, `fixed-text`, `free-mouse`, … |
+| `--prompt-id`  | —   | No       |   —          | Identifier of the prompt/stimulus, if any |
 
 **Examples:**
 ```bash
@@ -159,12 +163,27 @@ window context so demo data is obvious).
     "user_id": "..."             // -u, or getpass.getuser()
   },
   "metadata": {
+    "collection": { "task_type": "free-text", "prompt_id": null },
+    "device": {                  // environment (Shen 2013; Ahmed & Traore 2007)
+      "keyboard_layout": "com.apple.keylayout.US",
+      "os": "macOS-26.4-arm64-...", "os_version": "26.4",
+      "primary_screen": { "width_px": 1512, "height_px": 982, "scale": 2.0 },
+      "python": "3.14.7"
+    },
     "file_write_interval": 60,
     "monitor_info": [ ... ],     // mouse only — see below
     "number_of_actions": 617,
+    "quality": { "out_of_order_events": 0 },
+    "sampling_rate_hz": 61.4,    // mouse only — observed move rate
+    "session_id": "deac3702-...",// stable across a session's files
+    "session_start": 1780383649.5,
     "signal_type": "keyboard",   // or "mouse"
     "timestamp": 1780383709.18,  // epoch seconds at flush time
-    "version": "1"
+    "timing": {                  // timing provenance (Killourhy & Maxion 2009)
+      "backend": "pynput", "source": "monotonic_callback",
+      "unit": "s", "clock_resolution_ms": 0.00004
+    },
+    "version": "2"
   },
   "payload": [
     // keyboard: [action, "SimKey:<label>;<vk_code>", elapsed_seconds, window_context]
@@ -225,6 +244,7 @@ input_recorder/
 ├── keyboard_listener.py # keyboard capture            (≈ keyboard_hook.cpp)
 ├── mouse_listener.py    # mouse capture               (≈ mouse_hook.cpp)
 ├── displays.py          # monitor enumeration         (≈ EnumerateMonitors)
+├── device_info.py       # device/screen/layout metadata (macOS-specific)
 ├── permissions.py       # Input Monitoring pre-flight (macOS-specific)
 ├── reporting.py         # rich TUI + plain reporter    (macOS-specific)
 ├── console.py           # low-level carriage-return line writer
